@@ -12,6 +12,19 @@ interface PageInterface extends Arrayable
     public function id();
 
     /**
+     * Returns a page instance with the provided page id value
+     * 
+     * This method MUST be implemented in such a way as to retain the
+     * immutability of the page, and MUST return an instance that has the
+     * new and/or updated id.
+     * 
+     * @var string|int $id
+     * 
+     * @return self 
+     */
+    public function withPageId($id);
+
+    /**
      * Add a menu to the page component
      * 
      * @return static 
@@ -44,16 +57,6 @@ interface PageInterface extends Arrayable
      * @return static 
      */
     public function disableHistory();
-
-    // /**
-    //  * Add a callback that is invoked wheb the page 
-    //  * activity is completed by the user
-    //  * 
-    //  * @param PageCallbackInterface $type 
-    //  * 
-    //  * @return static 
-    //  */
-    // public function addCallback(PageCallbackInterface $listener);
 
     /**
      * Set the language to use for the page session

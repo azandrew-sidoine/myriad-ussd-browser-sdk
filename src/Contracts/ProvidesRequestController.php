@@ -1,5 +1,7 @@
 <?php
 
+namespace Drewlabs\MyriadUssdBrowserSdk\Contracts;
+
 use Drewlabs\MyriadUssdBrowserSdk\Contracts\RequestControllerInterface;
 
 interface ProvidesRequestController

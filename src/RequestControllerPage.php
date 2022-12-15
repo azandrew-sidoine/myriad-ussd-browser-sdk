@@ -2,15 +2,21 @@
 
 namespace Drewlabs\MyriadUssdBrowserSdk;
 
+use Drewlabs\MyriadUssdBrowserSdk\CompletesUSSDSession as MyriadUssdBrowserSdkCompletesUSSDSession;
+use Drewlabs\MyriadUssdBrowserSdk\Contracts\EndsUSSDSession;
 use Drewlabs\MyriadUssdBrowserSdk\Contracts\PageCallbackInterface;
 use Drewlabs\MyriadUssdBrowserSdk\Contracts\PageInterface;
 use Drewlabs\MyriadUssdBrowserSdk\Contracts\RequestControllerInterface;
+use Drewlabs\MyriadUssdBrowserSdk\Contracts\RequestInterface;
 use InvalidArgumentException;
 
-class RequestControllerPage implements PageInterface, RequestControllerInterface
+class RequestControllerPage implements
+    PageInterface,
+    RequestControllerInterface,
+    EndsUSSDSession
 {
 
-    use Pageable;
+    use USSDPageTrait, MyriadUssdBrowserSdkCompletesUSSDSession;
 
     /**
      * List of listeners of the page component
@@ -22,21 +28,21 @@ class RequestControllerPage implements PageInterface, RequestControllerInterface
     /**
      * Creates an instance of page component
      * 
-     * @param string|int $id 
-     * @param Stringable|string $title 
-     * @param Stringable|string $description 
      * @param PageCallbackInterface $callback 
+     * @param string|int|null $id 
+     * @param Stringable|string|null $title 
+     * @param Stringable|string|null $description
      * @param InputInterface|array|null $input
      * @throws InvalidArgumentException 
      */
     public function __construct(
-        $id,
-        $title,
-        $description,
         PageCallbackInterface $callback,
+        $id = null,
+        $title = null,
+        $description = null,
         $input = null
     ) {
-        if (!is_string($id) && !is_int($id)) {
+        if ((null !== $id) && !is_string($id) && !is_int($id)) {
             throw new InvalidArgumentException('Page id must be an instance of string or integer');
         }
         if (null !== $input) {
@@ -58,14 +64,14 @@ class RequestControllerPage implements PageInterface, RequestControllerInterface
      */
     public static function fromArray(array $attributes)
     {
-        Assert::assertRequiredKeys($attributes, ['id', 'title', 'description', 'callback']);
+        Assert::assertRequiredKeys($attributes, ['callback']);
 
         // Create the instance with default properties
         $object = new static(
-            $attributes['id'],
-            $attributes['title'],
-            $attributes['description'],
             $attributes['callback'],
+            $attributes['id'] ?? null,
+            $attributes['title'] ?? null,
+            $attributes['description'] ?? null,
             $attributes['input'] ?? $attributes['form'] ?? null
         );
         // Set the page links
@@ -73,7 +79,7 @@ class RequestControllerPage implements PageInterface, RequestControllerInterface
             $object->links($attributes['links']);
         }
         // Set the page attributes
-        $object->setPageAttrributes($attributes);
+        $object->setPageAttributes($attributes);
 
         // Returns the contructed object
         return $object;
@@ -123,8 +129,7 @@ class RequestControllerPage implements PageInterface, RequestControllerInterface
         return $this;
     }
 
-
-    public function onRequest($request)
+    public function onRequest(RequestInterface $request)
     {
         return $this->callback->__invoke($request);
     }

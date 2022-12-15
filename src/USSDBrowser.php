@@ -1,12 +1,17 @@
 <?php
 
+namespace Drewlabs\MyriadUssdBrowserSdk;
+
 use Drewlabs\MyriadUssdBrowserSdk\Assert;
 use Drewlabs\MyriadUssdBrowserSdk\Contracts\PageInterface;
 use Drewlabs\MyriadUssdBrowserSdk\Contracts\RequestControllerInterface;
+use Drewlabs\MyriadUssdBrowserSdk\Contracts\USSDBrowserInterface;
+use Drewlabs\MyriadUssdBrowserSdk\Contracts\USSDPageRegistryInterface;
 use Drewlabs\MyriadUssdBrowserSdk\Page;
 use Drewlabs\MyriadUssdBrowserSdk\RequestControllerPage;
+use InvalidArgumentException;
 
-class USSDBrowser
+class USSDBrowser implements USSDPageRegistryInterface, USSDBrowserInterface
 {
     /**
      * List of ussd browser pages
@@ -16,171 +21,115 @@ class USSDBrowser
     private $pages = [];
 
     /**
-     * Fallback request controller that is invoked when
-     * page does not provides a request controller
+     * List of USSD pages ids
      * 
-     * @var RequestControllerInterface
+     * @var array
      */
-    private $defaultRequestController;
+    private $pageids = [];
 
 
     /**
-     * Url which is called when client end a ussd session
+     * url which is called when client end a ussd session
      * 
      * @var string
      */
-    private $callbackUrl;
-
-    public function __construct(
-        array $pages = [],
-        string $callbackUrl = null,
-        RequestControllerInterface $defaultController = null
-    ) {
-
-        if (!empty($pages)) {
-            $this->addPages($pages);
-        }
-
-        if (null !== $callbackUrl) {
-            $this->registerCompleteCallbackUrl($callbackUrl);
-        }
-
-        if (null !== $defaultController) {
-            $this->useRequestController($defaultController);
-        }
-    }
-
+    private $completeCallbackUrl;
 
     /**
-     * Set the callback url to which request is send to by the USSD server
-     * when a client ends a given session
+     * Creates an instance of USSD Browser
      * 
-     * @param string $url
-     * 
-     * @return self 
-     */
-    public function registerCompleteCallbackUrl(string $url)
-    {
-        if (false === filter_var($url, FILTER_VALIDATE_URL)) {
-            throw new InvalidArgumentException('Expect parameter of ' . __METHOD__ . ' to be a RFC 2396 - Uniform Resource Identifiers (URI) compliant');
-        }
-        $this->callbackUrl = $url;
-        return $this;
-    }
-
-    /**
-     * Add a new page to the ussd browser page stack
-     * 
-     * @param array|PageInterface $page 
-     * @return self 
+     * @param array $pages 
+     * @param string|null $completeCallbackUrl 
+     * @param RequestControllerInterface|null $defaultController 
+     * @return void 
      * @throws InvalidArgumentException 
      * @throws UnexpectedValueException 
      */
-    public function addPage($page)
+    public function __construct(array $pages = [], string $completeCallbackUrl = null)
     {
-        Assert::assertTypeOf($page, ['array', PageInterface::class]);
-        if (is_array($page)) {
-            $id = $page['id'] ?? array_map(function ($char) {
-                return ord($char);
-            }, str_split((string)uniqid(time())));
-            $page['id'] = $id;
-        } else {
-            $id = $page->id();
+        if (!empty($pages)) {
+            $this->addPages($pages);
         }
+        if (null !== $completeCallbackUrl) {
+            $this->setCompleteCallbackUrl($completeCallbackUrl);
+        }
+    }
+
+    public function hasPage($page)
+    {
+        $id = $page instanceof PageInterface ? $page->id() : $page;
+        return null !== ($this->pageids[$id] ?? null);
+    }
+
+    public function addPage($instance)
+    {
+        $page = is_array($instance) ? (isset($instance['callback']) ?
+            RequestControllerPage::fromArray($instance) :
+            Page::fromArray($instance)) : $instance;
+        Assert::assertTypeOf($page, [PageInterface::class]);
         // There is no need to add a having the same id as an existing page
-        if ($page = $this->getPage($id)) {
+        if ($page === $this->getPage($page->id())) {
             return $this;
         }
-        $page_ = is_array($page) ? (isset($page['callback']) ? RequestControllerPage::fromArray($page) : Page::fromArray($page)) : $page;
-        $this->pages[] = $page_;
+        // We add the page to the internal list of pages
+        // We also add the pageid to the internal list of pages for fast search
+        $this->pages[] = $page;
+        // Note: The index of the current page is the index of 
+        // element in the internal list of pages
+        $this->pageids[$page->id()] = count($this->pages) - 1;
         return $this;
+    }
+
+    public function getPage($id)
+    {
+        $index = $this->pageids[$id] ?? null;
+        if (null === $index) {
+            return null;
+        }
+        return $this->pages[$index];
+    }
+
+    public function allPages()
+    {
+        return $this->pages ?? [];
+    }
+
+    public function removePage($page)
+    {
+        $id = $page instanceof PageInterface ? $page->id() : $page;
+        if (null === ($this->pageids[$id] ?? null)) {
+            return;
+        }
+        $index = $this->pageids[$id];
+        unset($this->pages[$index]);
+        unset($this->pageids[$id]);
     }
 
     /**
      * Add a list of pages to the pages prorperty
      * 
-     * @param array|PageInterface[] $pages 
+     * @param array<array<string,mixed>>|PageInterface[] $pages 
      * 
-     * @return self 
+     * @return void 
      */
     public function addPages(array $pages)
     {
         foreach ($pages as $page) {
             $this->addPage($page);
         }
+    }
+
+    public function setCompleteCallbackUrl(string $url)
+    {
+        if (false === filter_var($url, FILTER_VALIDATE_URL)) {
+            throw new InvalidArgumentException('Expect parameter of ' . __METHOD__ . ' to be a RFC 2396 - Uniform Resource Identifiers (URI) compliant');
+        }
+        $this->completeCallbackUrl = $url;
         return $this;
     }
 
-
-    /**
-     * Returns the page instance matching the provided $id value
-     * 
-     * @param string|int $id
-     * 
-     * @return PageInterface|null 
-     */
-    public function getPage($id)
+    public function getCompleteCallbackUrl()
     {
-        /**
-         * @var PageInterface $page
-         */
-        foreach ($this->pages ?? [] as $page) {
-            if ($page->id() === $id) {
-                return $page;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Returns the list of pages defines in the USSD browser
-     * 
-     * @return PageInterface[] 
-     */
-    public function allPages()
-    {
-        return $this->pages ?? [];
-    }
-
-    /**
-     * Provides a default controller to use if no page provides controller
-     * 
-     * @param RequestControllerInterface $controller 
-     * 
-     * @return static 
-     */
-    public function useRequestController(RequestControllerInterface $controller)
-    {
-        $this->defaultRequestController = $controller;
-        return $this;
-    }
-
-    /**
-     * 
-     * @param mixed $id 
-     * @param object $request 
-     * @return mixed 
-     * @throws RuntimeException 
-     */
-    public function handlePageRequest($id, object $request)
-    {
-        if (null === ($page = $this->getPage($id))) {
-            if (null === $this->defaultRequestController) {
-                throw new RuntimeException('No request controller found');
-            }
-            return $this->defaultRequestController->onRequest($request);
-        }
-        if ($page instanceof RequestControllerInterface) {
-            return $page->onRequest($request);
-        }
-
-        if ($page instanceof ProvidesRequestController) {
-            return $page->getController()->onRequest($request);
-        }
-
-        if (null !== $this->defaultRequestController) {
-            return $this->defaultRequestController->onRequest($request);
-        }
-        throw new RuntimeException('Page ' . $page->id() . ' is not a request handler, nor provides a request controller instance');
+        return $this->completeCallbackUrl;
     }
 }

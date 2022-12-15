@@ -10,7 +10,7 @@ class Assert
      * Expect the provided value to be in the list of items in the $haystack
      * 
      * @param mixed $key 
-     * @param array $haystack 
+     * @param array $haystack
      * @return void 
      * @throws InvalidArgumentException 
      */

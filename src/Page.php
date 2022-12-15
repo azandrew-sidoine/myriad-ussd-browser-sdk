@@ -2,33 +2,35 @@
 
 namespace Drewlabs\MyriadUssdBrowserSdk;
 
+use Drewlabs\MyriadUssdBrowserSdk\CompletesUSSDSession as MyriadUssdBrowserSdkCompletesUSSDSession;
+use Drewlabs\MyriadUssdBrowserSdk\Contracts\EndsUSSDSession;
 use Drewlabs\MyriadUssdBrowserSdk\Contracts\PageInterface;
 use InvalidArgumentException;
 use Drewlabs\MyriadUssdBrowserSdk\Contracts\InputInterface;
 use Drewlabs\MyriadUssdBrowserSdk\Contracts\Stringable;
 use UnexpectedValueException;
 
-class Page implements PageInterface
+class Page implements PageInterface, EndsUSSDSession
 {
-    use Pageable;
+    use USSDPageTrait, MyriadUssdBrowserSdkCompletesUSSDSession;
 
     /**
      * Creates an instance of page component
      * 
-     * @param string|int $id 
-     * @param Stringable|string $title 
-     * @param Stringable|string $description 
+     * @param string|int|null $id 
+     * @param Stringable|string|null $title 
+     * @param Stringable|string|null $description 
      * @param InputInterface|array|null $input
      * 
      * @throws InvalidArgumentException 
      */
     public function __construct(
-        $id,
-        $title,
-        $description,
+        $id = null,
+        $title = null,
+        $description = null,
         $input = null
     ) {
-        if (!is_string($id) && !is_int($id)) {
+        if ((null !== $id) && !is_string($id) && !is_int($id)) {
             throw new InvalidArgumentException('Page id must be an instance of string or integer');
         }
         if (null !== $input) {
@@ -49,13 +51,11 @@ class Page implements PageInterface
      */
     public static function fromArray(array $attributes)
     {
-        Assert::assertRequiredKeys($attributes, ['id', 'title', 'description']);
-
         // Create the instance with default properties
         $object = new static(
-            $attributes['id'],
-            $attributes['title'],
-            $attributes['description'],
+            $attributes['id'] ?? null,
+            $attributes['title'] ?? null,
+            $attributes['description'] ?? null,
             $attributes['input'] ?? $attributes['form'] ?? null
         );
         // Set the page links
@@ -64,7 +64,7 @@ class Page implements PageInterface
         }
 
         // Set the page attributes
-        $object->setPageAttrributes($attributes);
+        $object->setPageAttributes($attributes);
 
         // Returns the contructed object
         return $object;

@@ -3,12 +3,11 @@
 namespace Drewlabs\MyriadUssdBrowserSdk;
 
 use Drewlabs\MyriadUssdBrowserSdk\Contracts\LinkInterface;
-use Drewlabs\MyriadUssdBrowserSdk\Contracts\CreatesStaticLink;
 use Drewlabs\MyriadUssdBrowserSdk\Contracts\Stringable;
 use InvalidArgumentException;
 use UnexpectedValueException;
 
-class Link implements LinkInterface, CreatesStaticLink
+class Link implements LinkInterface
 {
 
     /**

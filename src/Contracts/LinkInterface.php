@@ -5,6 +5,13 @@ namespace Drewlabs\MyriadUssdBrowserSdk\Contracts;
 interface LinkInterface extends Arrayable
 {
     /**
+     * Makes the link static meaning it's shown on all page section
+     * 
+     * @return LinkInterface 
+     */
+    public function asStatic();
+
+    /**
      * Setter and getter for link id property 
      * 
      * @param int|null $value

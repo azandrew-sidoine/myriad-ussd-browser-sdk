@@ -7,10 +7,9 @@ interface RequestControllerInterface
     /**
      * Provides implementation for handling a page request
      * 
-     * @param object|array $rerquest
+     * @param RequestInterface $request
      * 
-     * @return mixed 
+     * @return PageInterface|null 
      */
-    public function onRequest($request);
-
+    public function onRequest(RequestInterface $request);
 }

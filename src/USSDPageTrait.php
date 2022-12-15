@@ -2,15 +2,13 @@
 
 namespace Drewlabs\MyriadUssdBrowserSdk;
 
+use Drewlabs\MyriadUssdBrowserSdk\Contracts\EndsUSSDSession;
 use Drewlabs\MyriadUssdBrowserSdk\Contracts\LinkInterface;
-use Drewlabs\MyriadUssdBrowserSdk\Contracts\PageCallbackInterface;
 use InvalidArgumentException;
 use UnexpectedValueException;
 
-trait Pageable
+trait USSDPageTrait
 {
-
-
     /**
      * Page component id
      * 
@@ -97,10 +95,30 @@ trait Pageable
      */
     private $ends_session = false;
 
-
     public function id()
     {
         return $this->id;
+    }
+
+    /**
+     * Creates a clone of the page instance
+     * 
+     * @return $this 
+     */
+    public function clone()
+    {
+        return clone $this;
+    }
+
+    /**
+     * {@inheritDoc} 
+     */
+    public function withPageId($id)
+    {
+        Assert::assertTypeOf($id, ['string', 'int']);
+        $object = $this->clone();
+        $object->id = $id;
+        return $object;
     }
 
     public function disableMenu()
@@ -181,18 +199,23 @@ trait Pageable
         }
     }
 
+    public function endsSession()
+    {
+        $this->ends_session = true;
+    }
+
     public function toArray()
     {
-        if ($this->callback && (false === filter_var($callback = (string)$this->callback, FILTER_VALIDATE_URL))) {
-            throw new UnexpectedValueException('Page callback __toString() function must return valid url');
-        }
+        $returnURL = $this instanceof EndsUSSDSession ?
+            $this->getReturnURL() :
+            null;
+
         return array_filter([
 
             // UI components
             'title' => (string)$this->title,
             'message' => (string)$this->ui_message,
             'form' => $this->input ? $this->input->toArray() : null,
-            'callback' => $callback ? $callback : null,
 
             // Build page links array
             'links' => array_map(function ($link) {
@@ -208,7 +231,8 @@ trait Pageable
                 'language' => $this->lang ?? 'en',
                 'volatile' => boolval($this->disable_cache),
                 'navigation_keywords' => !boolval($this->disable_navigation),
-                'session_end' => boolval($this->ends_session),
+                'session_end' =>  $returnURL ? false : boolval($this->ends_session),
+                'callback' => $returnURL ?? null,
             ]
 
         ], function ($item) {
@@ -224,7 +248,7 @@ trait Pageable
      * @throws UnexpectedValueException 
      * @throws InvalidArgumentException 
      */
-    private function setPageAttrributes(array $attributes)
+    private function setPageAttributes(array $attributes)
     {
         // Disable page menu
         if (boolval($attributes['disable_menu'] ?? false)) {
@@ -244,6 +268,10 @@ trait Pageable
         // Set the page language
         if (isset($attributes['lang'])) {
             $this->useLang($attributes['lang']);
+        }
+
+        if (isset($attributes['ends_session']) && (true === $attributes['ends_session'])) {
+            $this->endsSession();
         }
     }
 

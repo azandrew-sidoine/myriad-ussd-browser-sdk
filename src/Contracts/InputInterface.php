@@ -43,7 +43,7 @@ interface InputInterface extends Arrayable
 
     /**
      * Mark the input as password input. Input from user
-     * are treated as secrret value
+     * are treated as secret value
      * 
      * @return self 
      */
